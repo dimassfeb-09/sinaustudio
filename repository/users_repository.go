@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/dimassfeb-09/sinaustudio.git/entity/domain"
@@ -18,6 +19,7 @@ type UsersRepository interface {
 	DeleteDataUser(ctx context.Context, tx *sql.Tx, UUID string) (isSuccess bool, errMsg *response.ErrorMsg)
 	UpdateEmailUser(ctx context.Context, tx *sql.Tx, recentEmail string, newEmail string) (isSuccess bool, errMsg *response.ErrorMsg)
 	UpdateNameUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg)
+	UpdateNPMUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg)
 	FindUserByUUID(ctx context.Context, db *sql.DB, UUID string) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
 	IsEmailRegistered(ctx context.Context, db *sql.DB, email string) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
 	IsNPMRegistered(ctx context.Context, db *sql.DB, npm string) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
@@ -40,8 +42,9 @@ func (u *UsersRepositoryImplementations) InsertDataUser(ctx context.Context, tx 
 }
 
 func (u *UsersRepositoryImplementations) UpdateDataUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg) {
-	sqlQuery := "UPDATE users SET name = ?, email = ?, class_id = ?"
-	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.ClassID)
+	sqlQuery := "UPDATE users SET name = ?, email = ?, npm = ?, role = ?, class_id = ? WHERE uuid = ?"
+	fmt.Println(user)
+	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.NPM, &user.Role, &user.ClassID, &user.UUID)
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
@@ -90,6 +93,15 @@ func (u *UsersRepositoryImplementations) FindUserByUUID(ctx context.Context, db 
 func (u *UsersRepositoryImplementations) UpdateNameUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg) {
 	querySql := "UPDATE users SET name = ? WHERE uuid = ?"
 	_, err := tx.QueryContext(ctx, querySql, &user.Name, &user.UUID)
+	if err != nil {
+		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+	}
+	return true, nil
+}
+
+func (u *UsersRepositoryImplementations) UpdateNPMUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg) {
+	querySql := "UPDATE users SET npm = ? WHERE uuid = ?"
+	_, err := tx.QueryContext(ctx, querySql, &user.NPM, &user.UUID)
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
