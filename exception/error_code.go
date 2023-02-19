@@ -2,7 +2,8 @@ package exception
 
 // request
 var (
-	ERR_BAD_REQUEST_FIELD string = "ERR_BAD_REQUEST_FIELD"
+	ERR_UNAUTHORIZED_BEARER string = "ERR_UNAUTHORIZED_BEARER"
+	ERR_BAD_REQUEST_FIELD   string = "ERR_BAD_REQUEST_FIELD"
 )
 
 // user
@@ -16,4 +17,8 @@ var (
 
 var (
 	ERR_INTERNAL_SERVER string = "ERR_INTERNAL_SERVER"
+)
+
+var (
+	ERR_CONFLICT string = "ERR_CONFLICT"
 )
