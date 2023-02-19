@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"database/sql"
+	"github.com/dimassfeb-09/sinaustudio.git/app"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 
 	"github.com/dimassfeb-09/sinaustudio.git/entity/domain"
@@ -16,22 +18,25 @@ import (
 type UsersServiceImplementation struct {
 	DB              *sql.DB
 	UsersRepository repository.UsersRepository
+	M               app.MicroServiceServer
 }
 
-func NewUserServiceImplementation(DB *sql.DB, UsersRepository repository.UsersRepository) UsersService {
+func NewUserServiceImplementation(DB *sql.DB, M app.MicroServiceServer) UsersService {
 	return &UsersServiceImplementation{
 		DB:              DB,
-		UsersRepository: UsersRepository,
+		UsersRepository: M.UserRepository(),
+		M:               M,
 	}
 }
 
 type UsersService interface {
 	InsertDataUser(ctx context.Context, r *requests.UserInsertRequest) (bool, *responseError.ErrorMsg)
 	UpdateDataUser(ctx context.Context, r *requests.UserUpdateRequest) (bool, *responseError.ErrorMsg)
-	DeleteDataUser(ctx context.Context, UUID string) (bool, *responseError.ErrorMsg)
-	FindUserByUUID(ctx context.Context, UUID string) (*domain.Users, *responseError.ErrorMsg)
+	DeleteDataUser(ctx context.Context, confirmPass string, ID int) (bool, *responseError.ErrorMsg)
+	FindUserByID(ctx context.Context, ID int) (*domain.Users, *responseError.ErrorMsg)
 	IsEmailRegistered(ctx context.Context, email string) (isRegistered bool, errMsg *responseError.ErrorMsg)
 	IsNPMRegistered(ctx context.Context, npm string) (isRegistered bool, errMsg *responseError.ErrorMsg)
+	ChangePasswordUser(ctx context.Context, ID int, recentPass string, newPass string) (isSuccess bool, errNsg *responseError.ErrorMsg)
 }
 
 func (U *UsersServiceImplementation) InsertDataUser(ctx context.Context, r *requests.UserInsertRequest) (bool, *responseError.ErrorMsg) {
@@ -41,9 +46,15 @@ func (U *UsersServiceImplementation) InsertDataUser(ctx context.Context, r *requ
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	_, isUUIDRegistered, _ := U.UsersRepository.FindUserByUUID(ctx, U.DB, r.UUID)
-	if isUUIDRegistered {
-		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "UUID sudah terdaftar")
+	password, err := helpers.HashAndSaltPassword([]byte(r.Password))
+	if err != nil {
+		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+	}
+
+	r.Password = password
+	_, isIDRegistered, _ := U.UsersRepository.FindUserByID(ctx, U.DB, r.ID)
+	if isIDRegistered {
+		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "ID sudah terdaftar")
 	}
 
 	_, isEmailRegistered, _ := U.UsersRepository.IsEmailRegistered(ctx, U.DB, r.Email)
@@ -57,12 +68,13 @@ func (U *UsersServiceImplementation) InsertDataUser(ctx context.Context, r *requ
 	}
 
 	user := &domain.Users{
-		UUID:    r.UUID,
-		Name:    r.Name,
-		Email:   r.Email,
-		Role:    r.Role,
-		NPM:     r.NPM,
-		ClassID: r.ClassID,
+		ID:       r.ID,
+		Name:     r.Name,
+		Email:    r.Email,
+		Password: r.Password,
+		Role:     r.Role,
+		NPM:      r.NPM,
+		ClassID:  r.ClassID,
 	}
 
 	_, errMsg := U.UsersRepository.InsertDataUser(ctx, tx, user)
@@ -82,7 +94,7 @@ func (U *UsersServiceImplementation) UpdateDataUser(ctx context.Context, r *requ
 
 	response, isEmailRegistered, _ := U.UsersRepository.IsEmailRegistered(ctx, U.DB, r.Email)
 	if isEmailRegistered {
-		if response.UUID == r.UUID {
+		if response.ID == r.ID {
 			return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_PREVIOUS_FIELD_NOT_ALLOWED, "Gunakan email yang baru.")
 		} else {
 			return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "Email sudah digunakan.")
@@ -92,7 +104,7 @@ func (U *UsersServiceImplementation) UpdateDataUser(ctx context.Context, r *requ
 	response, isNPMRegistered, _ := U.UsersRepository.IsNPMRegistered(ctx, U.DB, r.NPM)
 	if r.NPM != "" {
 		if isNPMRegistered {
-			if response.UUID == r.UUID {
+			if response.ID == r.ID {
 				return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_PREVIOUS_FIELD_NOT_ALLOWED, "Gunakan NPM yang baru.")
 			} else {
 				return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "NPM sudah digunakan.")
@@ -101,7 +113,7 @@ func (U *UsersServiceImplementation) UpdateDataUser(ctx context.Context, r *requ
 	}
 
 	user := &domain.Users{
-		UUID:    r.UUID,
+		ID:      r.ID,
 		Name:    r.Name,
 		Email:   r.Email,
 		NPM:     r.NPM,
@@ -117,34 +129,43 @@ func (U *UsersServiceImplementation) UpdateDataUser(ctx context.Context, r *requ
 	return true, nil
 }
 
-func (U *UsersServiceImplementation) DeleteDataUser(ctx context.Context, UUID string) (bool, *responseError.ErrorMsg) {
+func (U *UsersServiceImplementation) DeleteDataUser(ctx context.Context, confirmPass string, ID int) (bool, *responseError.ErrorMsg) {
 	tx, err := U.DB.Begin()
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	_, isUUIDRegistered, _ := U.UsersRepository.FindUserByUUID(ctx, U.DB, UUID)
-	if !isUUIDRegistered {
-		return false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "UUID tidak ditemukan.")
+	user, isUserRegistered, errMsg := U.UsersRepository.FindUserByID(ctx, U.DB, ID)
+	if !isUserRegistered {
+		return false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "ID tidak ditemukan.")
 	}
 
-	_, errMsg := U.UsersRepository.DeleteDataUser(ctx, tx, UUID)
-	if errMsg != nil {
+	if isUserRegistered {
+		err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(confirmPass))
+		if err != nil {
+			return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, "Password tidak sesuai.")
+		}
+
+		isSuccess, errMsg := U.UsersRepository.DeleteDataUser(ctx, tx, user.ID)
+		if errMsg != nil && !isSuccess {
+			return false, errMsg
+		}
+
+		return isSuccess, nil
+	} else {
 		return false, errMsg
 	}
-
-	return true, nil
 }
 
-func (U *UsersServiceImplementation) FindUserByUUID(ctx context.Context, UUID string) (*domain.Users, *responseError.ErrorMsg) {
-	response, isUUIDRegistered, errMsg := U.UsersRepository.FindUserByUUID(ctx, U.DB, UUID)
+func (U *UsersServiceImplementation) FindUserByID(ctx context.Context, ID int) (*domain.Users, *responseError.ErrorMsg) {
+	response, isIDRegistered, errMsg := U.UsersRepository.FindUserByID(ctx, U.DB, ID)
 	if errMsg != nil {
 		return nil, errMsg
 	}
 
-	if !isUUIDRegistered {
-		return nil, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Data UUID tidak ditemukan.")
+	if !isIDRegistered {
+		return nil, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Data ID tidak ditemukan.")
 	}
 
 	return response, nil
@@ -174,4 +195,38 @@ func (U *UsersServiceImplementation) IsNPMRegistered(ctx context.Context, npm st
 	}
 
 	return true, nil
+}
+
+func (U *UsersServiceImplementation) ChangePasswordUser(ctx context.Context, ID int, recentPass string, newPass string) (isSuccess bool, errNsg *responseError.ErrorMsg) {
+	tx, err := U.DB.Begin()
+	if err != nil {
+		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+	}
+	defer helpers.RollbackOrCommit(tx)
+
+	user, isUserRegistered, errMsg := U.UsersRepository.FindUserByID(ctx, U.DB, ID)
+	if !isUserRegistered && errMsg != nil {
+		return false, errMsg
+	}
+
+	if isUserRegistered {
+		err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(recentPass))
+		if err != nil {
+			return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, "Password saat ini tidak sesuai.")
+		}
+
+		hashNewPass, err := helpers.HashAndSaltPassword([]byte(newPass))
+		if err != nil {
+			return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, err)
+		}
+
+		isSuccess, errMsg := U.UsersRepository.ChangePasswordUser(ctx, tx, hashNewPass, user.ID)
+		if errMsg != nil && !isSuccess {
+			return false, errMsg
+		}
+
+		return isSuccess, nil
+	} else {
+		return false, errMsg
+	}
 }
