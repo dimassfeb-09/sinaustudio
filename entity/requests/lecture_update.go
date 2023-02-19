@@ -1,6 +1,6 @@
 package requests
 
-type InsertLectureRequest struct {
-	ID   int
-	Name string
+type UpdateLectureRequest struct {
+	ID   int    `json:"id"`
+	Name string `binding:"required" json:"name"`
 }
