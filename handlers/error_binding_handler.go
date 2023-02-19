@@ -10,7 +10,6 @@ import (
 
 func ErrorValidateHandler(err error) string {
 	var Msg string
-	fmt.Println(err)
 	switch err.(type) {
 	case validator.ValidationErrors:
 		for _, err := range err.(validator.ValidationErrors) {
@@ -33,12 +32,5 @@ func ErrorValidateHandler(err error) string {
 }
 
 func typeValidator(tag string) string {
-	switch tag {
-	case "alpha":
-		return "string"
-	case "number":
-		return "integer"
-	default:
-		return tag
-	}
+	return tag
 }
