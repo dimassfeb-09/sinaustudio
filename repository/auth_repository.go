@@ -12,13 +12,13 @@ import (
 
 type AuthRepository interface {
 	AuthRegisterUser(ctx context.Context, tx *sql.Tx, user *domain.AuthRegisterUser) (isSuccess bool, errMsg *response.ErrorMsg)
-	AuthLoginUser(ctx context.Context, db *sql.DB, email string, password string) (isSuccess bool, errMsg *response.ErrorMsg)
+	AuthLoginUser(ctx context.Context, db *sql.DB, email string) (isSuccess bool, result *domain.AuthLoginUser, errMsg *response.ErrorMsg)
 }
 
 type AuthRepositoryImplementation struct {
 }
 
-func NewAuthRepository() AuthRepository {
+func NewAuthRepositoryImplementation() AuthRepository {
 	return &AuthRepositoryImplementation{}
 }
 
@@ -31,17 +31,22 @@ func (a *AuthRepositoryImplementation) AuthRegisterUser(ctx context.Context, tx 
 	return true, nil
 }
 
-func (a *AuthRepositoryImplementation) AuthLoginUser(ctx context.Context, db *sql.DB, email string, password string) (isSuccess bool, errMsg *response.ErrorMsg) {
-	sqlQuery := "SELECT id FROM users WHERE email = ? AND password = ?"
-	rows, err := db.QueryContext(ctx, sqlQuery, email, password)
+func (a *AuthRepositoryImplementation) AuthLoginUser(ctx context.Context, db *sql.DB, email string) (isSuccess bool, result *domain.AuthLoginUser, errMsg *response.ErrorMsg) {
+	sqlQuery := "SELECT id, email, password FROM users WHERE email = ?"
+	rows, err := db.QueryContext(ctx, sqlQuery, email)
 	if err != nil {
-		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+		return false, nil, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
 	defer rows.Close()
 
+	var user domain.AuthLoginUser
 	if rows.Next() {
-		return true, nil
+		err := rows.Scan(&user.ID, &user.Email, &user.Password)
+		if err != nil {
+			return false, nil, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+		}
+		return true, &user, nil
 	} else {
-		return false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Data tidak ditemukan")
+		return false, nil, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Username atau Password salah.")
 	}
 }
