@@ -1,7 +1,7 @@
 package requests
 
 type UserInsertRequest struct {
-	UUID     string `binding:"required,alphanum" json:"uuid"`
+	ID       int    `binding:"required,alphanum" json:"id"`
 	Name     string `binding:"required,alpha,min=5" json:"name"`
 	Email    string `binding:"required,email,min=5" json:"email"`
 	Password string `binding:"required,alphanum,min=6" json:"password"`
