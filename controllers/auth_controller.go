@@ -1,12 +1,12 @@
 package controllers
 
 import (
+	"fmt"
+	"github.com/dimassfeb-09/sinaustudio.git/api"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/requests"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/response"
 	"github.com/dimassfeb-09/sinaustudio.git/exception"
-	"github.com/dimassfeb-09/sinaustudio.git/handlers"
 	"github.com/dimassfeb-09/sinaustudio.git/helpers"
-	"github.com/dimassfeb-09/sinaustudio.git/middleware"
 	"github.com/dimassfeb-09/sinaustudio.git/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -27,9 +27,10 @@ func NewAuthControllerImplementation(authService services.AuthService) AuthContr
 
 func (a *AuthControllerImplementation) AuthRegisterUser(c *gin.Context) {
 	var auth requests.AuthRegisterRequest
+
 	err := c.ShouldBind(&auth)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
@@ -55,11 +56,13 @@ func (a *AuthControllerImplementation) AuthLoginUser(c *gin.Context) {
 	var user requests.AuthLoginRequest
 	err := c.ShouldBind(&user)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
 	}
+
+	fmt.Println(user)
 
 	userInfo, errMsg := a.AuthService.AuthLoginUser(c.Request.Context(), user.Email, user.Password)
 	if errMsg != nil && userInfo == nil {
@@ -70,15 +73,14 @@ func (a *AuthControllerImplementation) AuthLoginUser(c *gin.Context) {
 
 	if userInfo != nil {
 
-		userInfoJWT := &middleware.UserInfo{
+		userInfoJWT := &api.UserInfo{
 			ID:      userInfo.ID,
 			Name:    userInfo.Name,
 			Email:   userInfo.Email,
-			NPM:     userInfo.NPM,
 			Role:    userInfo.Role,
 			ClassID: userInfo.ClassID,
 		}
-		token, err := middleware.JWTGenereateToken(userInfoJWT)
+		token, err := api.JWTGenereateToken(userInfoJWT)
 		if err != nil {
 			c.JSON(errMsg.StatusCode, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, err))
 			return

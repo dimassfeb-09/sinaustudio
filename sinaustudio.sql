@@ -1,0 +1,46 @@
+-- Active: 1676282244764@@127.0.0.1@3306@sinaustudio
+
+SELECT * FROM users;
+
+ALTER TABLE users ADD COLUMN npm VARCHAR(100);
+
+CREATE TABLE
+    lecture (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL
+    );
+
+SHOW TABLES;
+
+SELECT * FROM users;
+
+ALTER TABLE users MODIFY COLUMN id VARCHAR(100) NOT NULL;
+
+ALTER TABLE users MODIFY COLUMN class_id INT NOT NULL;
+
+ALTER TABLE users MODIFY COLUMN email VARCHAR(100) NOT NULL;
+
+ALTER TABLE users MODIFY COLUMN npm VARCHAR(100);
+
+SELECT * FROM users;
+
+DESC users;
+
+ALTER TABLE users
+ADD
+    COLUMN role ENUM('dosen', 'mahasiswa') NOT NULL;
+
+SELECT * FROM class;
+
+SHOW TABLES ;
+
+CREATE TABLE usessee(
+    ID INT AUTO_INCREMENT PRIMARY KEY ,
+    TIME DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+SELECT * FROM lecture;
+
+INSERT INTO room(name, url, lecture_id, start_room, end_room) VALUES('Dimas', 'atsdhgasdas', 2, '2023-02-19 20:25:50', '2023-02-19 20:25:50');
+

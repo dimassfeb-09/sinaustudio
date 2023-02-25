@@ -1,4 +1,4 @@
-package handlers
+package helpers
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ func ErrorValidateHandler(err error) string {
 	case validator.ValidationErrors:
 		for _, err := range err.(validator.ValidationErrors) {
 			field := strings.ToLower(err.Field())
-			tag := typeValidator(err.Tag())
+			tag := err.Tag()
 			Msg = fmt.Sprintf("Key: %s, Tag: %s", field, tag)
 			break
 		}
@@ -29,8 +29,4 @@ func ErrorValidateHandler(err error) string {
 
 	return Msg
 
-}
-
-func typeValidator(tag string) string {
-	return tag
 }

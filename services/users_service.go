@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
-	"github.com/dimassfeb-09/sinaustudio.git/app"
+	"github.com/dimassfeb-09/sinaustudio.git/api"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 
@@ -18,10 +18,10 @@ import (
 type UsersServiceImplementation struct {
 	DB              *sql.DB
 	UsersRepository repository.UsersRepository
-	M               app.MicroServiceServer
+	M               api.MicroServiceServer
 }
 
-func NewUserServiceImplementation(DB *sql.DB, M app.MicroServiceServer) UsersService {
+func NewUserServiceImplementation(DB *sql.DB, M api.MicroServiceServer) UsersService {
 	return &UsersServiceImplementation{
 		DB:              DB,
 		UsersRepository: M.UserRepository(),
@@ -35,7 +35,6 @@ type UsersService interface {
 	DeleteDataUser(ctx context.Context, confirmPass string, ID int) (bool, *responseError.ErrorMsg)
 	FindUserByID(ctx context.Context, ID int) (*domain.Users, *responseError.ErrorMsg)
 	IsEmailRegistered(ctx context.Context, email string) (isRegistered bool, errMsg *responseError.ErrorMsg)
-	IsNPMRegistered(ctx context.Context, npm string) (isRegistered bool, errMsg *responseError.ErrorMsg)
 	ChangePasswordUser(ctx context.Context, ID int, recentPass string, newPass string) (isSuccess bool, errNsg *responseError.ErrorMsg)
 }
 
@@ -46,15 +45,9 @@ func (U *UsersServiceImplementation) InsertDataUser(ctx context.Context, r *requ
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	password, err := helpers.HashAndSaltPassword([]byte(r.Password))
+	hashPassword, err := helpers.HashAndSaltPassword([]byte(r.Password))
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
-	}
-
-	r.Password = password
-	_, isIDRegistered, _ := U.UsersRepository.FindUserByID(ctx, U.DB, r.ID)
-	if isIDRegistered {
-		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "ID sudah terdaftar")
 	}
 
 	_, isEmailRegistered, _ := U.UsersRepository.IsEmailRegistered(ctx, U.DB, r.Email)
@@ -62,18 +55,12 @@ func (U *UsersServiceImplementation) InsertDataUser(ctx context.Context, r *requ
 		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "Email sudah digunakan")
 	}
 
-	_, isNPMRegistered, _ := U.UsersRepository.IsNPMRegistered(ctx, U.DB, r.NPM)
-	if isNPMRegistered {
-		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "NPM sudah digunakan")
-	}
-
 	user := &domain.Users{
 		ID:       r.ID,
 		Name:     r.Name,
 		Email:    r.Email,
-		Password: r.Password,
+		Password: hashPassword,
 		Role:     r.Role,
-		NPM:      r.NPM,
 		ClassID:  r.ClassID,
 	}
 
@@ -101,22 +88,10 @@ func (U *UsersServiceImplementation) UpdateDataUser(ctx context.Context, r *requ
 		}
 	}
 
-	response, isNPMRegistered, _ := U.UsersRepository.IsNPMRegistered(ctx, U.DB, r.NPM)
-	if r.NPM != "" {
-		if isNPMRegistered {
-			if response.ID == r.ID {
-				return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_PREVIOUS_FIELD_NOT_ALLOWED, "Gunakan NPM yang baru.")
-			} else {
-				return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_ALREADY_USE, "NPM sudah digunakan.")
-			}
-		}
-	}
-
 	user := &domain.Users{
 		ID:      r.ID,
 		Name:    r.Name,
 		Email:   r.Email,
-		NPM:     r.NPM,
 		Role:    r.Role,
 		ClassID: r.ClassID,
 	}
@@ -178,19 +153,6 @@ func (U *UsersServiceImplementation) IsEmailRegistered(ctx context.Context, emai
 	}
 
 	if !isEmailRegistered {
-		return false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Data Email tidak ditemukan.")
-	}
-
-	return true, nil
-}
-
-func (U *UsersServiceImplementation) IsNPMRegistered(ctx context.Context, npm string) (isRegistered bool, errMsg *responseError.ErrorMsg) {
-	_, isNPMRegistered, errMsg := U.UsersRepository.IsNPMRegistered(ctx, U.DB, npm)
-	if errMsg != nil {
-		return false, errMsg
-	}
-
-	if !isNPMRegistered {
 		return false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Data Email tidak ditemukan.")
 	}
 

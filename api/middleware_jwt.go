@@ -1,4 +1,4 @@
-package middleware
+package api
 
 import (
 	"errors"
@@ -17,7 +17,6 @@ type CustomJWTClaims struct {
 	ID      int    `json:"id"`
 	Name    string `json:"name"`
 	Email   string `json:"email"`
-	NPM     string `json:"npm"`
 	Role    string `json:"role"`
 	ClassID int    `json:"class_id"`
 }
@@ -26,7 +25,6 @@ type UserInfo struct {
 	ID      int
 	Name    string
 	Email   string
-	NPM     string
 	Role    string
 	ClassID int
 }
@@ -78,7 +76,6 @@ func JWTGenereateToken(info *UserInfo) (string, error) {
 		ID:      info.ID,
 		Name:    info.Name,
 		Email:   info.Name,
-		NPM:     info.NPM,
 		Role:    info.Role,
 		ClassID: info.ClassID,
 	}

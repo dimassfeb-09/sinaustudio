@@ -1,4 +1,4 @@
-package middleware
+package api
 
 import (
 	"github.com/dimassfeb-09/sinaustudio.git/exception"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func MiddlewareAuthorizationfunc(c *gin.Context) {
+func MiddlewareAuthorization(c *gin.Context) {
 	authorization := c.Request.Header.Get("Authorization")
 	if authorization == "" {
 		errMsg := helpers.ToErrorMsg(http.StatusUnauthorized, exception.ERR_UNAUTHORIZED_BEARER, "Key: Header with key Authorization: Bearer Token, Tag: Required")

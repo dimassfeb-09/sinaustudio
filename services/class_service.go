@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
-	"github.com/dimassfeb-09/sinaustudio.git/app"
+	"github.com/dimassfeb-09/sinaustudio.git/api"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/domain"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/requests"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/response"
@@ -14,8 +14,8 @@ import (
 )
 
 type ClassService interface {
-	AddClass(ctx context.Context, name string) (isSuccess bool, errMsg *response.ErrorMsg)
-	UpdateClass(ctx context.Context, class *requests.UpdateClassRequest) (isSuccess bool, errMsg *response.ErrorMsg)
+	AddClass(ctx context.Context, r *requests.InsertClassRequest) (isSuccess bool, errMsg *response.ErrorMsg)
+	UpdateClass(ctx context.Context, r *requests.UpdateClassRequest) (isSuccess bool, errMsg *response.ErrorMsg)
 	DeleteClassByID(ctx context.Context, ID int) (isSuccess bool, errMsg *response.ErrorMsg)
 	FindClassByID(ctx context.Context, ID int) (*domain.Class, bool, *response.ErrorMsg)
 	FindClassByName(ctx context.Context, name string) (*domain.Class, bool, *response.ErrorMsg)
@@ -24,26 +24,26 @@ type ClassService interface {
 type ClassServiceImplementation struct {
 	DB              *sql.DB
 	ClassRepository repository.ClassRepository
-	M               app.MicroServiceServer
+	M               api.MicroServiceServer
 }
 
-func NewClassServiceImplementation(DB *sql.DB, M app.MicroServiceServer) ClassService {
+func NewClassServiceImplementation(DB *sql.DB, M api.MicroServiceServer) ClassService {
 	return &ClassServiceImplementation{DB: DB, ClassRepository: M.ClassRepository(), M: M}
 }
 
-func (c *ClassServiceImplementation) AddClass(ctx context.Context, name string) (bool, *response.ErrorMsg) {
+func (c *ClassServiceImplementation) AddClass(ctx context.Context, r *requests.InsertClassRequest) (bool, *response.ErrorMsg) {
 	tx, err := c.DB.Begin()
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	_, isAlready, _ := c.ClassRepository.FindClassByName(ctx, c.DB, name)
-	if isAlready {
-		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_BAD_REQUEST_FIELD, "Nama kelas sudah ada.")
+	r.KodeKelas = helpers.RandStr(10)
+	class := &domain.Class{
+		Name:      r.Name,
+		KodeKelas: r.KodeKelas,
 	}
-
-	isSuccess, errMsg := c.ClassRepository.InsertClass(ctx, tx, name)
+	isSuccess, errMsg := c.ClassRepository.InsertClass(ctx, tx, class)
 	if !isSuccess && errMsg != nil {
 		return false, errMsg
 	}
@@ -58,18 +58,9 @@ func (c *ClassServiceImplementation) UpdateClass(ctx context.Context, r *request
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	responseClass, isIDRegistered, errMsg := c.ClassRepository.FindClassByID(ctx, c.DB, r.ID)
+	_, isIDRegistered, errMsg := c.ClassRepository.FindClassByID(ctx, c.DB, r.ID)
 	if !isIDRegistered {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_NOT_FOUND, "Class ID tidak ditemukan.")
-	}
-
-	responseClass, isNameRegistered, _ := c.ClassRepository.FindClassByName(ctx, c.DB, r.Name)
-	if isNameRegistered {
-		if responseClass.ID == r.ID {
-			return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_NOT_FOUND, "Gunakan nama kelas baru untuk mengubah.")
-		} else {
-			return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_NOT_FOUND, "Nama kelas telah digunakan.")
-		}
 	}
 
 	class := &domain.Class{

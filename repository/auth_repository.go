@@ -11,7 +11,7 @@ import (
 )
 
 type AuthRepository interface {
-	AuthRegisterUser(ctx context.Context, tx *sql.Tx, user *domain.AuthRegisterUser) (isSuccess bool, errMsg *response.ErrorMsg)
+	AuthRegisterUser(ctx context.Context, tx *sql.Tx, user *domain.AuthRegisterUser) (isSuccess bool, lastID int, errMsg *response.ErrorMsg)
 	AuthLoginUser(ctx context.Context, db *sql.DB, email string) (isSuccess bool, result *domain.AuthLoginUser, errMsg *response.ErrorMsg)
 }
 
@@ -22,13 +22,18 @@ func NewAuthRepositoryImplementation() AuthRepository {
 	return &AuthRepositoryImplementation{}
 }
 
-func (a *AuthRepositoryImplementation) AuthRegisterUser(ctx context.Context, tx *sql.Tx, user *domain.AuthRegisterUser) (isSuccess bool, errMsg *response.ErrorMsg) {
-	sqlQuery := "INSERT INTO users(name, email, password, class_id, npm, role) VALUES (?,?,?,?,?,?)"
-	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.Password, &user.ClassID, &user.NPM, &user.Role)
+func (a *AuthRepositoryImplementation) AuthRegisterUser(ctx context.Context, tx *sql.Tx, user *domain.AuthRegisterUser) (isSuccess bool, lastID int, errMsg *response.ErrorMsg) {
+	sqlQuery := "INSERT INTO users(name, email, password, class_id, role) VALUES (?,?,?,?,?)"
+	result, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.Password, &user.ClassID, &user.Role)
 	if err != nil {
-		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+		return false, 0, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
-	return true, nil
+	if err != nil {
+		return false, 0, nil
+	}
+
+	ID, _ := result.LastInsertId()
+	return true, int(ID), nil
 }
 
 func (a *AuthRepositoryImplementation) AuthLoginUser(ctx context.Context, db *sql.DB, email string) (isSuccess bool, result *domain.AuthLoginUser, errMsg *response.ErrorMsg) {

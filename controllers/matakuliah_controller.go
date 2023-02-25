@@ -10,25 +10,25 @@ import (
 	"strconv"
 )
 
-type LectureController interface {
-	InsertLecture(c *gin.Context)
-	UpdateLecture(c *gin.Context)
-	DeleteLecture(c *gin.Context)
-	FindLectureByID(c *gin.Context)
-	FindLectureByName(c *gin.Context)
+type MatkulController interface {
+	InsertMatkul(c *gin.Context)
+	UpdateMatkul(c *gin.Context)
+	DeleteMatkul(c *gin.Context)
+	FindMatkulByID(c *gin.Context)
+	FindMatkulByName(c *gin.Context)
 }
 
-type LectureControllerImplementation struct {
-	LectureService services.LectureService
+type MatkulControllerImplementation struct {
+	MataKuliahService services.MataKuliahService
 }
 
-func NewLectureController(lectureService services.LectureService) LectureController {
-	return &LectureControllerImplementation{LectureService: lectureService}
+func NewMatkulController(matkulService services.MataKuliahService) MatkulController {
+	return &MatkulControllerImplementation{MataKuliahService: matkulService}
 }
 
-func (l *LectureControllerImplementation) InsertLecture(c *gin.Context) {
-	var lecture requests.InsertLectureRequest
-	err := c.ShouldBind(&lecture)
+func (l *MatkulControllerImplementation) InsertMatkul(c *gin.Context) {
+	var matkul requests.InsertMatkulRequest
+	err := c.ShouldBind(&matkul)
 	if err != nil {
 		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
@@ -36,7 +36,7 @@ func (l *LectureControllerImplementation) InsertLecture(c *gin.Context) {
 		return
 	}
 
-	isSuccess, errMsg := l.LectureService.InsertLecture(c.Request.Context(), &lecture)
+	isSuccess, errMsg := l.MataKuliahService.InsertMatkul(c.Request.Context(), &matkul)
 	if errMsg != nil && !isSuccess {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -53,7 +53,7 @@ func (l *LectureControllerImplementation) InsertLecture(c *gin.Context) {
 	}
 }
 
-func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
+func (l *MatkulControllerImplementation) UpdateMatkul(c *gin.Context) {
 
 	ID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
@@ -62,8 +62,8 @@ func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
 		return
 	}
 
-	var lecture requests.UpdateLectureRequest
-	err = c.ShouldBind(&lecture)
+	var matkul requests.UpdateMatkulRequest
+	err = c.ShouldBind(&matkul)
 	if err != nil {
 		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
@@ -71,8 +71,8 @@ func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
 		return
 	}
 
-	lecture.ID = ID
-	isSuccess, errMsg := l.LectureService.UpdateLecture(c.Request.Context(), &lecture)
+	matkul.ID = ID
+	isSuccess, errMsg := l.MataKuliahService.UpdateMatkul(c.Request.Context(), &matkul)
 	if errMsg != nil && !isSuccess {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -89,7 +89,7 @@ func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
 	}
 }
 
-func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
+func (l *MatkulControllerImplementation) DeleteMatkul(c *gin.Context) {
 	ID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", "Invalid ID, fill with number ID")
@@ -97,7 +97,7 @@ func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
 		return
 	}
 
-	isSuccess, errMsg := l.LectureService.DeleteLectureByID(c.Request.Context(), ID)
+	isSuccess, errMsg := l.MataKuliahService.DeleteMatkulByID(c.Request.Context(), ID)
 	if errMsg != nil && !isSuccess {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -115,7 +115,7 @@ func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
 
 }
 
-func (l *LectureControllerImplementation) FindLectureByID(c *gin.Context) {
+func (l *MatkulControllerImplementation) FindMatkulByID(c *gin.Context) {
 	ID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", "Invalid ID, fill with number ID")
@@ -123,7 +123,7 @@ func (l *LectureControllerImplementation) FindLectureByID(c *gin.Context) {
 		return
 	}
 
-	lecture, isIDValid, errMsg := l.LectureService.FindLectureByID(c.Request.Context(), ID)
+	matkul, isIDValid, errMsg := l.MataKuliahService.FindMatkulByID(c.Request.Context(), ID)
 	if errMsg != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -134,28 +134,28 @@ func (l *LectureControllerImplementation) FindLectureByID(c *gin.Context) {
 			Success:    true,
 			StatusCode: http.StatusOK,
 			Msg:        "Sukses Get Data Dosen",
-			Data:       lecture,
+			Data:       matkul,
 		})
 		return
 	}
 
 }
 
-func (l *LectureControllerImplementation) FindLectureByName(c *gin.Context) {
+func (l *MatkulControllerImplementation) FindMatkulByName(c *gin.Context) {
 
 	name := c.Query("name")
-	lecture, isIDValid, errMsg := l.LectureService.FindLectureByName(c.Request.Context(), name)
+	matkuls, errMsg := l.MataKuliahService.FindMatkulByName(c.Request.Context(), name)
 	if errMsg != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
 	}
 
-	if isIDValid {
+	if matkuls != nil {
 		c.JSON(http.StatusOK, &response.SuccessResponse{
 			Success:    true,
 			StatusCode: http.StatusOK,
-			Msg:        "Sukses Get Data Dosen",
-			Data:       lecture,
+			Msg:        "Sukses Get Data Matkul",
+			Data:       matkuls,
 		})
 		return
 	}

@@ -10,25 +10,25 @@ import (
 	"strconv"
 )
 
-type LectureController interface {
-	InsertLecture(c *gin.Context)
-	UpdateLecture(c *gin.Context)
-	DeleteLecture(c *gin.Context)
-	FindLectureByID(c *gin.Context)
-	FindLectureByName(c *gin.Context)
+type RoomController interface {
+	InsertRoom(c *gin.Context)
+	UpdateRoom(c *gin.Context)
+	DeleteRoom(c *gin.Context)
+	FindRoomByID(c *gin.Context)
 }
 
-type LectureControllerImplementation struct {
-	LectureService services.LectureService
+type RoomControllerImplementation struct {
+	RoomService services.RoomService
 }
 
-func NewLectureController(lectureService services.LectureService) LectureController {
-	return &LectureControllerImplementation{LectureService: lectureService}
+func NewRoomController(roomService services.RoomService) RoomController {
+	return &RoomControllerImplementation{RoomService: roomService}
 }
 
-func (l *LectureControllerImplementation) InsertLecture(c *gin.Context) {
-	var lecture requests.InsertLectureRequest
-	err := c.ShouldBind(&lecture)
+func (l *RoomControllerImplementation) InsertRoom(c *gin.Context) {
+
+	var room requests.InsertRoomRequest
+	err := c.ShouldBind(&room)
 	if err != nil {
 		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
@@ -36,7 +36,7 @@ func (l *LectureControllerImplementation) InsertLecture(c *gin.Context) {
 		return
 	}
 
-	isSuccess, errMsg := l.LectureService.InsertLecture(c.Request.Context(), &lecture)
+	isSuccess, errMsg := l.RoomService.InsertRoom(c.Request.Context(), &room)
 	if errMsg != nil && !isSuccess {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -46,14 +46,14 @@ func (l *LectureControllerImplementation) InsertLecture(c *gin.Context) {
 		helpers.ToWebResponse(c, &response.SuccessResponse{
 			Success:    true,
 			StatusCode: http.StatusOK,
-			Msg:        "Sukses Create Data Dosen",
+			Msg:        "Sukses Create Data Room",
 			Data:       nil,
 		})
 		return
 	}
 }
 
-func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
+func (l *RoomControllerImplementation) UpdateRoom(c *gin.Context) {
 
 	ID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
@@ -62,8 +62,8 @@ func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
 		return
 	}
 
-	var lecture requests.UpdateLectureRequest
-	err = c.ShouldBind(&lecture)
+	var room requests.UpdateRoomRequest
+	err = c.ShouldBind(&room)
 	if err != nil {
 		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
@@ -71,8 +71,8 @@ func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
 		return
 	}
 
-	lecture.ID = ID
-	isSuccess, errMsg := l.LectureService.UpdateLecture(c.Request.Context(), &lecture)
+	room.ID = ID
+	isSuccess, errMsg := l.RoomService.UpdateRoom(c.Request.Context(), &room)
 	if errMsg != nil && !isSuccess {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -82,14 +82,14 @@ func (l *LectureControllerImplementation) UpdateLecture(c *gin.Context) {
 		helpers.ToWebResponse(c, &response.SuccessResponse{
 			Success:    true,
 			StatusCode: http.StatusOK,
-			Msg:        "Sukses Update Data Dosen",
+			Msg:        "Sukses Update Data Room",
 			Data:       nil,
 		})
 		return
 	}
 }
 
-func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
+func (l *RoomControllerImplementation) DeleteRoom(c *gin.Context) {
 	ID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", "Invalid ID, fill with number ID")
@@ -97,7 +97,7 @@ func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
 		return
 	}
 
-	isSuccess, errMsg := l.LectureService.DeleteLectureByID(c.Request.Context(), ID)
+	isSuccess, errMsg := l.RoomService.DeleteRoomByID(c.Request.Context(), ID)
 	if errMsg != nil && !isSuccess {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -107,7 +107,7 @@ func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
 		c.JSON(http.StatusOK, &response.SuccessResponse{
 			Success:    true,
 			StatusCode: http.StatusOK,
-			Msg:        "Sukses Hapus Data Dosen",
+			Msg:        "Sukses Hapus Data Room",
 			Data:       nil,
 		})
 		return
@@ -115,7 +115,7 @@ func (l *LectureControllerImplementation) DeleteLecture(c *gin.Context) {
 
 }
 
-func (l *LectureControllerImplementation) FindLectureByID(c *gin.Context) {
+func (l *RoomControllerImplementation) FindRoomByID(c *gin.Context) {
 	ID, err := strconv.Atoi(c.Query("id"))
 	if err != nil {
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", "Invalid ID, fill with number ID")
@@ -123,7 +123,7 @@ func (l *LectureControllerImplementation) FindLectureByID(c *gin.Context) {
 		return
 	}
 
-	lecture, isIDValid, errMsg := l.LectureService.FindLectureByID(c.Request.Context(), ID)
+	room, isIDValid, errMsg := l.RoomService.FindRoomByID(c.Request.Context(), ID)
 	if errMsg != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
 		return
@@ -133,29 +133,8 @@ func (l *LectureControllerImplementation) FindLectureByID(c *gin.Context) {
 		c.JSON(http.StatusOK, &response.SuccessResponse{
 			Success:    true,
 			StatusCode: http.StatusOK,
-			Msg:        "Sukses Get Data Dosen",
-			Data:       lecture,
-		})
-		return
-	}
-
-}
-
-func (l *LectureControllerImplementation) FindLectureByName(c *gin.Context) {
-
-	name := c.Query("name")
-	lecture, isIDValid, errMsg := l.LectureService.FindLectureByName(c.Request.Context(), name)
-	if errMsg != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errMsg)
-		return
-	}
-
-	if isIDValid {
-		c.JSON(http.StatusOK, &response.SuccessResponse{
-			Success:    true,
-			StatusCode: http.StatusOK,
-			Msg:        "Sukses Get Data Dosen",
-			Data:       lecture,
+			Msg:        "Sukses Get Data Room",
+			Data:       room,
 		})
 		return
 	}

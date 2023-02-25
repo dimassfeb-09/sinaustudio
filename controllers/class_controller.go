@@ -4,7 +4,6 @@ import (
 	"github.com/dimassfeb-09/sinaustudio.git/entity/requests"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/response"
 	"github.com/dimassfeb-09/sinaustudio.git/exception"
-	"github.com/dimassfeb-09/sinaustudio.git/handlers"
 	"github.com/dimassfeb-09/sinaustudio.git/helpers"
 	"github.com/dimassfeb-09/sinaustudio.git/services"
 	"github.com/gin-gonic/gin"
@@ -33,13 +32,13 @@ func (k ClassControllerImplementation) AddClass(c *gin.Context) {
 	var class requests.InsertClassRequest
 	err := c.ShouldBind(&class)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
 	}
 
-	isSuccess, errMsg := k.ClassService.AddClass(c.Request.Context(), class.Name)
+	isSuccess, errMsg := k.ClassService.AddClass(c.Request.Context(), &class)
 	if !isSuccess && errMsg != nil {
 		c.AbortWithStatusJSON(errMsg.StatusCode, errMsg)
 		return
@@ -69,7 +68,7 @@ func (k ClassControllerImplementation) UpdateClass(c *gin.Context) {
 	var class requests.UpdateClassRequest
 	err = c.ShouldBind(&class)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return

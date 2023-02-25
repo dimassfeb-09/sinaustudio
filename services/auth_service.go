@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
-	"github.com/dimassfeb-09/sinaustudio.git/app"
+	"github.com/dimassfeb-09/sinaustudio.git/api"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/domain"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/requests"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/response"
@@ -20,13 +20,21 @@ type AuthService interface {
 }
 
 type AuthRepositoryImplementation struct {
-	DB             *sql.DB
-	AuthRepository repository.AuthRepository
-	M              app.MicroServiceServer
+	DB                *sql.DB
+	AuthRepository    repository.AuthRepository
+	ClassRepository   repository.ClassRepository
+	LectureRepository repository.LectureRepository
+	M                 api.MicroServiceServer
 }
 
-func NewAuthServiceImplementation(DB *sql.DB, M app.MicroServiceServer) AuthService {
-	return &AuthRepositoryImplementation{DB: DB, AuthRepository: M.AuthRepository(), M: M}
+func NewAuthServiceImplementation(DB *sql.DB, M api.MicroServiceServer) AuthService {
+	return &AuthRepositoryImplementation{
+		DB:                DB,
+		AuthRepository:    M.AuthRepository(),
+		ClassRepository:   M.ClassRepository(),
+		LectureRepository: M.LectureRepository(),
+		M:                 M,
+	}
 }
 
 func (a *AuthRepositoryImplementation) AuthRegisterUser(ctx context.Context, r *requests.AuthRegisterRequest) (bool, *response.ErrorMsg) {
@@ -36,38 +44,45 @@ func (a *AuthRepositoryImplementation) AuthRegisterUser(ctx context.Context, r *
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	password, err := helpers.HashAndSaltPassword([]byte(r.Password))
+	hashPassword, err := helpers.HashAndSaltPassword([]byte(r.Password))
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
 
-	userRepository := a.M.UserRepository()
+	_, isClassIDValid, _ := a.M.ClassRepository().FindClassByID(ctx, a.DB, r.ClassID)
+	if !isClassIDValid {
+		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, "Kode kelas tidak ditemukan")
+	}
 
-	_, isEmailRegistered, _ := userRepository.IsEmailRegistered(ctx, a.DB, r.Email)
+	_, isEmailRegistered, _ := a.M.UserRepository().IsEmailRegistered(ctx, a.DB, r.Email)
 	if isEmailRegistered {
 		return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, "Email telah digunakan")
 	}
 
-	if r.NPM != "" {
-		_, isNPMRegistered, _ := userRepository.IsNPMRegistered(ctx, a.DB, r.NPM)
-		if isNPMRegistered {
-			return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, "NPM telah digunakan")
-		}
-	}
-
-	r.Password = password
 	user := &domain.AuthRegisterUser{
 		Name:     r.Name,
 		Email:    r.Email,
-		Password: r.Password,
+		Password: hashPassword,
 		Role:     r.Role,
-		NPM:      r.NPM,
 		ClassID:  r.ClassID,
 	}
 
-	success, errMsg := a.AuthRepository.AuthRegisterUser(ctx, tx, user)
-	if errMsg != nil && !success {
+	isRegisterSuccess, lastID, errMsg := a.AuthRepository.AuthRegisterUser(ctx, tx, user)
+	if errMsg != nil && !isRegisterSuccess {
 		return false, errMsg
+	}
+
+	if r.Role == "dosen" || r.Role == "guru" {
+		if isRegisterSuccess {
+			lecture := &domain.Lecture{
+				Name:   user.Name,
+				UserID: lastID,
+			}
+			_, errMsg := a.LectureRepository.InsertLecture(ctx, tx, lecture)
+			if errMsg != nil {
+				return false, helpers.ToErrorMsg(http.StatusBadRequest, exception.ERR_BAD_REQUEST_FIELD, "User ID telah digunakan")
+			}
+		}
 	}
 
 	return true, nil
@@ -99,7 +114,6 @@ func (a *AuthRepositoryImplementation) AuthLoginUser(ctx context.Context, email 
 		ID:      userResponse.ID,
 		Name:    userResponse.Name,
 		Email:   userResponse.Email,
-		NPM:     userResponse.NPM,
 		Role:    userResponse.Role,
 		ClassID: userResponse.ClassID,
 	}

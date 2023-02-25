@@ -11,10 +11,11 @@ import (
 )
 
 type LectureRepository interface {
-	InsertLecture(ctx context.Context, tx *sql.Tx, name string) (isSuccess bool, errMsg *response.ErrorMsg)
+	InsertLecture(ctx context.Context, tx *sql.Tx, lecture *domain.Lecture) (isSuccess bool, errMsg *response.ErrorMsg)
 	UpdateLecture(ctx context.Context, tx *sql.Tx, lecture *domain.Lecture) (isSuccess bool, errMsg *response.ErrorMsg)
 	DeleteLectureByID(ctx context.Context, tx *sql.Tx, ID int) (isSuccess bool, errMsg *response.ErrorMsg)
 	FindLectureByID(ctx context.Context, db *sql.DB, ID int) (lecture *domain.Lecture, isRegistered bool, errMsg *response.ErrorMsg)
+	FindLectureByUserID(ctx context.Context, db *sql.DB, userID int) (lecture *domain.Lecture, isRegistered bool, errMsg *response.ErrorMsg)
 	FindLectureByName(ctx context.Context, db *sql.DB, name string) (lecture *domain.Lecture, isRegistered bool, errMsg *response.ErrorMsg)
 }
 
@@ -25,9 +26,9 @@ func NewLectureRepositoryImplementation() LectureRepository {
 	return &LectureRepositoryImplementation{}
 }
 
-func (l *LectureRepositoryImplementation) InsertLecture(ctx context.Context, tx *sql.Tx, name string) (isSuccess bool, errMsg *response.ErrorMsg) {
-	querySql := "INSERT INTO lecture(name) VALUES(?)"
-	_, err := tx.ExecContext(ctx, querySql, name)
+func (l *LectureRepositoryImplementation) InsertLecture(ctx context.Context, tx *sql.Tx, lecture *domain.Lecture) (isSuccess bool, errMsg *response.ErrorMsg) {
+	querySql := "INSERT INTO lecture(name, user_id) VALUES(?, ?)"
+	_, err := tx.ExecContext(ctx, querySql, lecture.Name, lecture.UserID)
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
@@ -63,6 +64,27 @@ func (l *LectureRepositoryImplementation) FindLectureByID(ctx context.Context, d
 	var lecture domain.Lecture
 	if row.Next() {
 		err := row.Scan(&lecture.ID, &lecture.Name)
+		if err != nil {
+			return nil, false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, err)
+		} else {
+			return &lecture, true, nil
+		}
+	} else {
+		return nil, false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Dosen dengan ID tidak ditemukan.")
+	}
+}
+
+func (l *LectureRepositoryImplementation) FindLectureByUserID(ctx context.Context, db *sql.DB, userID int) (*domain.Lecture, bool, *response.ErrorMsg) {
+	querySql := "SELECT id, name, user_id FROM lecture WHERE user_id = ?"
+	row, err := db.QueryContext(ctx, querySql, userID)
+	if err != nil {
+		return nil, false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
+	}
+	defer row.Close()
+
+	var lecture domain.Lecture
+	if row.Next() {
+		err := row.Scan(&lecture.ID, &lecture.Name, &lecture.UserID)
 		if err != nil {
 			return nil, false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, err)
 		} else {

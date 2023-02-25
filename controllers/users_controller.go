@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/requests"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/response"
-	"github.com/dimassfeb-09/sinaustudio.git/handlers"
 	"github.com/dimassfeb-09/sinaustudio.git/helpers"
 	"github.com/dimassfeb-09/sinaustudio.git/services"
 	"github.com/gin-gonic/gin"
@@ -27,7 +26,6 @@ type UsersController interface {
 	DeleteDataUser(c *gin.Context)
 	FindUserByID(c *gin.Context)
 	IsEmailRegistered(c *gin.Context)
-	IsNPMRegistered(c *gin.Context)
 	ChangePasswordUser(c *gin.Context)
 }
 
@@ -35,7 +33,7 @@ func (u *UsersControllerImplementation) InsertDataUser(c *gin.Context) {
 	var user requests.UserInsertRequest
 	err := c.ShouldBind(&user)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
@@ -61,7 +59,7 @@ func (u *UsersControllerImplementation) UpdateDataUser(c *gin.Context) {
 	var user requests.UserUpdateRequest
 	err := c.ShouldBind(&user)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
@@ -95,7 +93,7 @@ func (u *UsersControllerImplementation) DeleteDataUser(c *gin.Context) {
 	var user requests.UserDeleteRequest
 	err = c.ShouldBind(&user)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
@@ -127,11 +125,6 @@ func (u *UsersControllerImplementation) IsEmailRegistered(c *gin.Context) {
 	panic("implement me")
 }
 
-func (u *UsersControllerImplementation) IsNPMRegistered(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (u *UsersControllerImplementation) ChangePasswordUser(c *gin.Context) {
 
 	ID, err := strconv.Atoi(c.Query("id"))
@@ -144,7 +137,7 @@ func (u *UsersControllerImplementation) ChangePasswordUser(c *gin.Context) {
 	var user requests.UserChangePassword
 	err = c.ShouldBind(&user)
 	if err != nil {
-		errorList := handlers.ErrorValidateHandler(err)
+		errorList := helpers.ErrorValidateHandler(err)
 		errMsg := helpers.ToErrorMsg(http.StatusBadRequest, "ERR_BAD_REQUEST_FIELD", errorList)
 		c.JSON(http.StatusBadRequest, errMsg)
 		return
@@ -153,7 +146,6 @@ func (u *UsersControllerImplementation) ChangePasswordUser(c *gin.Context) {
 	isSuccess, errMsg := u.UsersService.ChangePasswordUser(c.Request.Context(), ID, user.RecentPassword, user.NewPassword)
 	if !isSuccess && errMsg != nil {
 		c.AbortWithStatusJSON(errMsg.StatusCode, errMsg)
-
 		return
 	}
 

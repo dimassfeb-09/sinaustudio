@@ -1,0 +1,36 @@
+
+
+GET http://localhost:8081/api/v.1/class
+Content-Type: application/json
+Authorization: Bearer
+
+###
+POST /api/v.1/auth/register HTTP/1.1
+Host: localhost:8081
+Content-Type: application/json
+Content-Length: 154
+
+{
+  "email": "dimassfeasadaasdsdb@gaamail.com",
+  "password": "jahgdasadaadsasd",
+  "name": "Dimas",
+  "role": "dosen",
+  "class_id": 1
+}
+
+
+###
+POST /api/v.1/auth/login HTTP/1.1
+Host: localhost:8081
+Content-Type: application/json
+
+{
+  "email": "dimas@gaamail.com",
+  "password": "jahgdasadaadsasd"
+}
+
+###
+GET /api/v.1/class?id=2 HTTP/1.1
+Host: localhost:8081
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTSU5BVVNUVURJTyIsInN1YiI6IlNpbmF1IFN0dWRpb3MgaXMiLCJleHAiOjE2NzczMzI4MTIsIm5iZiI6MTY3NzI0NjQxMiwiaWF0IjoxNjc3MjQ2NDEyLCJpZCI6NjUsIm5hbWUiOiJEaW1hcyIsImVtYWlsIjoiRGltYXMiLCJyb2xlIjoiZG9zZW4iLCJjbGFzc19pZCI6NH0.6GyxxgmGuzmIunxCzpXIGOsZYM7tWnw-CtXXNHtjBqc

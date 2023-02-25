@@ -18,7 +18,6 @@ type UsersRepository interface {
 	FindUserByID(ctx context.Context, db *sql.DB, ID int) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
 	FindUserByEmail(ctx context.Context, db *sql.DB, email string) (userResponse *domain.Users, errMsg *response.ErrorMsg)
 	IsEmailRegistered(ctx context.Context, db *sql.DB, email string) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
-	IsNPMRegistered(ctx context.Context, db *sql.DB, npm string) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
 	ChangePasswordUser(ctx context.Context, tx *sql.Tx, newPass string, ID int) (isSuccess bool, errMsg *response.ErrorMsg)
 	FindUserByClassID(ctx context.Context, db *sql.DB, classID int) (userResponse []domain.Users, isRegistered bool, errMsg *response.ErrorMsg)
 }
@@ -30,8 +29,8 @@ func NewUsersRepositoryImplementations() UsersRepository {
 }
 
 func (u *UsersRepositoryImplementations) InsertDataUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg) {
-	sqlQuery := "INSERT INTO users(name, email, password, class_id, npm, role) VALUES(?, ?, ?, ?, ?, ?)"
-	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.Password, &user.ClassID, &user.NPM, &user.Role)
+	sqlQuery := "INSERT INTO users(name, email, password, class_id, role) VALUES(?, ?, ?, ?, ?)"
+	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.Password, &user.ClassID, &user.Role)
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
@@ -39,8 +38,8 @@ func (u *UsersRepositoryImplementations) InsertDataUser(ctx context.Context, tx 
 }
 
 func (u *UsersRepositoryImplementations) UpdateDataUser(ctx context.Context, tx *sql.Tx, user *domain.Users) (isSuccess bool, errMsg *response.ErrorMsg) {
-	sqlQuery := "UPDATE users SET name = ?, email = ?, npm = ?, role = ?, class_id = ? WHERE id = ?"
-	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.NPM, &user.Role, &user.ClassID, &user.ID)
+	sqlQuery := "UPDATE users SET name = ?, email = ?, role = ?, class_id = ? WHERE id = ?"
+	_, err := tx.ExecContext(ctx, sqlQuery, &user.Name, &user.Email, &user.Role, &user.ClassID, &user.ID)
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
@@ -87,7 +86,7 @@ func (u *UsersRepositoryImplementations) FindUserByID(ctx context.Context, db *s
 }
 
 func (u *UsersRepositoryImplementations) FindUserByEmail(ctx context.Context, db *sql.DB, email string) (userResponse *domain.Users, errMsg *response.ErrorMsg) {
-	querySql := "SELECT id, name, email, npm, role, class_id FROM users WHERE email = ?"
+	querySql := "SELECT id, name, email, role, class_id FROM users WHERE email = ?"
 	rows, err := db.QueryContext(ctx, querySql, email)
 	if err != nil {
 		return nil, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
@@ -96,7 +95,7 @@ func (u *UsersRepositoryImplementations) FindUserByEmail(ctx context.Context, db
 
 	var user domain.Users
 	if rows.Next() {
-		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.NPM, &user.Role, &user.ClassID)
+		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.ClassID)
 		if err != nil {
 			return nil, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 		}
@@ -118,26 +117,6 @@ func (u *UsersRepositoryImplementations) IsEmailRegistered(ctx context.Context, 
 	var user domain.Users
 	if row.Next() {
 		err := row.Scan(&user.ID, &user.Email)
-		if err != nil {
-			return nil, false, helpers.ToErrorMsg(http.StatusNotFound, "ERR_INTERNAL_SERVER_ERROR", err)
-		}
-		return &user, true, nil
-	} else {
-		return nil, false, helpers.ToErrorMsg(http.StatusNotFound, "ERR_NOT_FOUND", "Data tidak ditemukan")
-	}
-}
-
-func (u *UsersRepositoryImplementations) IsNPMRegistered(ctx context.Context, db *sql.DB, npm string) (userResponse *domain.Users, isRegistered bool, errMsg *response.ErrorMsg) {
-	querySql := "SELECT id, npm FROM users WHERE npm = ?"
-	row, err := db.QueryContext(ctx, querySql, npm)
-	if err != nil {
-		return nil, false, helpers.ToErrorMsg(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err)
-	}
-	defer row.Close()
-
-	var user domain.Users
-	if row.Next() {
-		err := row.Scan(&user.ID, &user.NPM)
 		if err != nil {
 			return nil, false, helpers.ToErrorMsg(http.StatusNotFound, "ERR_INTERNAL_SERVER_ERROR", err)
 		}

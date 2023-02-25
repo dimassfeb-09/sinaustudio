@@ -3,8 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"github.com/dimassfeb-09/sinaustudio.git/app"
+	"github.com/dimassfeb-09/sinaustudio.git/api"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/domain"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/requests"
 	"github.com/dimassfeb-09/sinaustudio.git/entity/response"
@@ -25,10 +24,10 @@ type LectureService interface {
 type LectureServiceImplementation struct {
 	DB                *sql.DB
 	LectureRepository repository.LectureRepository
-	M                 app.MicroServiceServer
+	M                 api.MicroServiceServer
 }
 
-func NewLectureServiceImplementation(DB *sql.DB, m app.MicroServiceServer) LectureService {
+func NewLectureServiceImplementation(DB *sql.DB, m api.MicroServiceServer) LectureService {
 	return &LectureServiceImplementation{DB: DB, LectureRepository: m.LectureRepository(), M: m}
 }
 
@@ -39,12 +38,17 @@ func (l *LectureServiceImplementation) InsertLecture(ctx context.Context, r *req
 	}
 	defer helpers.RollbackOrCommit(tx)
 
-	_, isIDValid, errMsg := l.LectureRepository.FindLectureByID(ctx, l.DB, r.ID)
-	if errMsg != nil && !isIDValid {
-		return false, errMsg
+	_, isUserIDRegistered, _ := l.LectureRepository.FindLectureByUserID(ctx, l.DB, r.UserID)
+	if isUserIDRegistered {
+		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, "User ID telah digunakan")
 	}
 
-	isSuccess, errMsg := l.LectureRepository.InsertLecture(ctx, tx, r.Name)
+	lecture := &domain.Lecture{
+		Name:   r.Name,
+		UserID: r.UserID,
+	}
+
+	isSuccess, errMsg := l.LectureRepository.InsertLecture(ctx, tx, lecture)
 	if errMsg != nil && !isSuccess {
 		return false, errMsg
 	}
@@ -84,6 +88,11 @@ func (l *LectureServiceImplementation) DeleteLectureByID(ctx context.Context, ID
 	}
 	defer helpers.RollbackOrCommit(tx)
 
+	_, isIDValid, _ := l.LectureRepository.FindLectureByID(ctx, l.DB, ID)
+	if !isIDValid {
+		return false, helpers.ToErrorMsg(http.StatusNotFound, exception.ERR_NOT_FOUND, "Dosen dengan ID tidak ditemukan")
+	}
+
 	isSuccess, errMsg := l.LectureRepository.DeleteLectureByID(ctx, tx, ID)
 	if errMsg != nil && !isSuccess {
 		return false, errMsg
@@ -95,7 +104,6 @@ func (l *LectureServiceImplementation) DeleteLectureByID(ctx context.Context, ID
 func (l *LectureServiceImplementation) FindLectureByID(ctx context.Context, ID int) (r *response.LectureResponse, isValid bool, errMsg *response.ErrorMsg) {
 	lecture, isIDValid, errMsg := l.LectureRepository.FindLectureByID(ctx, l.DB, ID)
 	if isIDValid {
-		fmt.Println(lecture)
 		lectureResponse := &response.LectureResponse{
 			ID:   lecture.ID,
 			Name: lecture.Name,

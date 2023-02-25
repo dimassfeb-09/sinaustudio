@@ -11,7 +11,7 @@ import (
 )
 
 type ClassRepository interface {
-	InsertClass(ctx context.Context, tx *sql.Tx, name string) (isSuccess bool, errMsg *response.ErrorMsg)
+	InsertClass(ctx context.Context, tx *sql.Tx, class *domain.Class) (isSuccess bool, errMsg *response.ErrorMsg)
 	UpdateClass(ctx context.Context, tx *sql.Tx, class *domain.Class) (isSuccess bool, errMsg *response.ErrorMsg)
 	DeleteClassByID(ctx context.Context, tx *sql.Tx, ID int) (isSuccess bool, errMsg *response.ErrorMsg)
 	FindClassByID(ctx context.Context, db *sql.DB, ID int) (*domain.Class, bool, *response.ErrorMsg)
@@ -25,9 +25,9 @@ func NewClassRepositoryImplementation() ClassRepository {
 	return &ClassRepositoryImplementation{}
 }
 
-func (c *ClassRepositoryImplementation) InsertClass(ctx context.Context, tx *sql.Tx, name string) (isSuccess bool, errMsg *response.ErrorMsg) {
-	querySql := "INSERT INTO class(name) VALUES(?)"
-	_, err := tx.ExecContext(ctx, querySql, name)
+func (c *ClassRepositoryImplementation) InsertClass(ctx context.Context, tx *sql.Tx, class *domain.Class) (isSuccess bool, errMsg *response.ErrorMsg) {
+	querySql := "INSERT INTO class(name, kode_kelas) VALUES(?, ?)"
+	_, err := tx.ExecContext(ctx, querySql, &class.Name, &class.KodeKelas)
 	if err != nil {
 		return false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
 	}
@@ -53,7 +53,7 @@ func (c *ClassRepositoryImplementation) DeleteClassByID(ctx context.Context, tx 
 }
 
 func (c *ClassRepositoryImplementation) FindClassByID(ctx context.Context, db *sql.DB, ID int) (*domain.Class, bool, *response.ErrorMsg) {
-	querySql := "SELECT id, name FROM class WHERE id = ?"
+	querySql := "SELECT id, name, kode_kelas FROM class WHERE id = ?"
 	row, err := db.QueryContext(ctx, querySql, ID)
 	if err != nil {
 		return nil, false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_INTERNAL_SERVER, err)
@@ -62,7 +62,7 @@ func (c *ClassRepositoryImplementation) FindClassByID(ctx context.Context, db *s
 
 	var class domain.Class
 	if row.Next() {
-		err := row.Scan(&class.ID, &class.Name)
+		err := row.Scan(&class.ID, &class.Name, &class.KodeKelas)
 		if err != nil {
 			return nil, false, helpers.ToErrorMsg(http.StatusInternalServerError, exception.ERR_GET_DATA, err)
 		} else {
